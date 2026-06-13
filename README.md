@@ -40,6 +40,42 @@ Subtitle Player is a **local-first subtitle reader and karaoke-style lyric viewe
 | **Windows desktop** | Single portable `SubtitlePlayer.exe` — double-click, pick a file, no Python install for end users. |
 | **Developer / self-host** | Run `uv run python subtitle_player/run.py` locally; REST + SSE API for custom integrations. |
 
+### Scenario 1: YouTube & foreign-video subtitle study
+
+Watch YouTube or other foreign-language videos with **bilingual subtitles side by side** for faster learning.
+
+1. Download subtitles from the video (browser extensions, `yt-dlp`, or site export) as `.srt` / `.vtt`.
+2. Open the subtitle file in Subtitle Player; switch to **Bilingual** view (English on top, Chinese below).
+3. If Chinese is missing, click **Generate Chinese translation** or press Play — translation streams in while you read.
+4. Play the video in another window; follow Subtitle Player’s auto-scroll and karaoke highlight to stay in sync by eye.
+5. Click any line to jump; adjust speed (0.5×–2×) to match the speaker. Cached `.bilingual.json` lets you resume next time without re-translating.
+
+> Tip: Subtitle Player does not play video — keep the video in your browser and use this tool as a dedicated bilingual subtitle panel.
+
+### Scenario 2: Podcast / course transcript follow-along (no video)
+
+You only have a transcript from STT (FunASR, Whisper, `batch_transcribe`, etc.) — no video file at all.
+
+1. Open the `[hh:mm:ss] text` `.txt` or `.srt` output directly (no conversion needed for FunASR format).
+2. Use **simulated playback**: current line centers on screen, words light up left-to-right like karaoke lyrics.
+3. Switch to **English only** for dictation practice, or **Bilingual** after generating Chinese.
+4. Slow down to 0.5×–0.75× when the speaker is fast; enlarge font for long reading sessions with eye-care themes.
+5. Re-open the same file later — translation cache and scroll position make it easy to continue where you left off.
+
+Ideal for: podcast notes, online course replays, interview transcripts, and any audio you have already transcribed.
+
+### Scenario 3: Conference talks & technical talks — line-by-line deep read
+
+Dense English content (AI talks, product keynotes, academic lectures) where you need to **pause, re-read, and compare wording**.
+
+1. Load the official or auto-generated `.srt` / `.vtt` subtitle.
+2. Start in **English** view; use click-to-seek on any line instead of scrubbing a timeline.
+3. Switch to **Bilingual** and generate Chinese for terms and long sentences; untranslated lines show a placeholder until ready.
+4. Toggle **dark eye-care theme** and bump font size for 30–60 minute sessions.
+5. Export-ready cache (`*.bilingual.json`) sits next to the source file — share or archive the bilingual version for team review.
+
+Ideal for: TED-style talks, technical webinars, product launches, and any content where accuracy matters more than real-time speed.
+
 ---
 
 ## FAQ
