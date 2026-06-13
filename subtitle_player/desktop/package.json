@@ -1,0 +1,50 @@
+{
+  "name": "subtitle-player-desktop",
+  "productName": "SubtitlePlayer",
+  "version": "0.0.1",
+  "description": "Subtitle Player desktop client (Electron shell + embedded Python backend)",
+  "main": "main.js",
+  "author": "xk",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "start:prod": "cross-env SP_FORCE_PACKAGED=1 electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.xk.subtitleplayer",
+    "productName": "SubtitlePlayer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "loading.html"
+    ],
+    "compression": "store",
+    "extraResources": [
+      {
+        "from": "../../dist/SubtitlePlayer-backend",
+        "to": "backend"
+      }
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "SubtitlePlayer.exe"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Secrets
+.env
+.env.local
+
+# Electron / desktop build
+subtitle_player/desktop/node_modules/
+subtitle_player/desktop/release/
+*.spec.bak
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# User data (runtime)
+uploads/
+*.bilingual.json

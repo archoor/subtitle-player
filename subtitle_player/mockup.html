@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>字幕播放工具 · 原型预览</title>
+<style>
+  /* ============================================================
+     护眼主题变量：默认「米黄护眼」，data-theme="dark" 切「暗色护眼」
+     设计原则：避免纯白(#fff)/纯黑(#000)，暖色调，中低对比，降蓝光
+     ============================================================ */
+  :root {
+    --bg:          #ECE6D6;   /* 主背景：米黄纸感 */
+    --panel:       #E5DECB;   /* 面板/控制栏背景 */
+    --panel-2:     #DED6C0;   /* 次级面板 */
+    --line:        #D6CDB4;   /* 分隔线 */
+    --text-dim:    #A89F8A;   /* 未播放/远处文字（弱） */
+    --text-base:   #6E6655;   /* 普通文字 */
+    --text-strong: #3F3A30;   /* 当前行底色文字 */
+    --accent:      #2E7D6F;   /* 高亮主色：沉静青绿（已点亮文字） */
+    --accent-soft: #5BA292;   /* 高亮辅色 */
+    --zh:          #8A6D3B;   /* 中文文字色：暖棕，与英文区分 */
+    --btn:         #D8CFB6;
+    --btn-hover:   #Ccc1a3;
+    --shadow:      rgba(80, 70, 50, .18);
+  }
+  [data-theme="dark"] {
+    --bg:          #20242A;   /* 暗色护眼：偏蓝灰，不纯黑 */
+    --panel:       #272C33;
+    --panel-2:     #2E343C;
+    --line:        #353B43;
+    --text-dim:    #5A6470;
+    --text-base:   #9AA4AF;
+    --text-strong: #D7D0C2;
+    --accent:      #6FD3BE;   /* 暗色下高亮：柔和薄荷绿 */
+    --accent-soft: #4E9E8C;
+    --zh:          #D7B783;   /* 暖金，护眼不刺眼 */
+    --btn:         #303740;
+    --btn-hover:   #3A424C;
+    --shadow:      rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text-base);
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    transition: background .4s ease, color .4s ease;
+  }
+  body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; color: var(--text-strong); font-size: 15px; letter-spacing: .5px; }
+  .filename {
+    color: var(--text-base); font-size: 13px;
+    background: var(--panel-2); padding: 4px 12px; border-radius: 20px;
+    max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .topbar .spacer { flex: 1; }
+
+  .seg-toggle { display: inline-flex; background: var(--panel-2); border-radius: 10px; padding: 3px; }
+  .seg-toggle button {
+    border: 0; background: transparent; color: var(--text-base);
+    padding: 6px 14px; font-size: 13px; border-radius: 8px; cursor: pointer;
+    transition: all .2s;
+  }
+  .seg-toggle button.active { background: var(--accent); color: var(--bg); font-weight: 600; }
+
+  .icon-btn {
+    border: 0; background: var(--btn); color: var(--text-strong);
+    width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 16px;
+    transition: background .2s;
+  }
+  .icon-btn:hover { background: var(--btn-hover); }
+
+  /* ---------- 字幕区 ---------- */
+  .stage {
+    flex: 1 1 auto; overflow-y: auto; position: relative;
+    padding: 40vh 0;          /* 上下留白，让当前行能滚到中间 */
+    scroll-behavior: smooth;
+  }
+  .stage::-webkit-scrollbar { width: 10px; }
+  .stage::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+
+  .seg {
+    max-width: 880px; margin: 0 auto; padding: 18px 48px;
+    display: grid; gap: 6px;
+    cursor: pointer;
+    transition: opacity .35s ease, transform .35s ease;
+  }
+  /* 双栏布局 */
+  body[data-view="both"] .seg { grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  body[data-view="both"] .seg .zh { text-align: left; }
+
+  /* 单栏时隐藏对应语言 */
+  body[data-view="en"] .seg .zh { display: none; }
+  body[data-view="zh"] .seg .en { display: none; }
+
+  .en, .zh {
+    font-size: var(--fs, 22px);
+    line-height: 1.6;
+    transition: font-size .2s ease;
+  }
+  .zh { color: var(--zh); font-size: calc(var(--fs, 22px) * .92); }
+
+  /* 远处行：更弱 */
+  .seg { opacity: .38; }
+  .seg.near { opacity: .62; }
+  .seg.active { opacity: 1; transform: scale(1.02); }
+  .seg.active .en, .seg.active .zh { color: var(--text-strong); font-weight: 600; }
+  body[data-view="zh"] .seg.active .zh,
+  body[data-view="both"] .seg.active .zh { color: var(--zh); }
+
+  /* ---------- 跑马灯逐字高亮（按词 span，多行也不错位） ---------- */
+  .karaoke .w { transition: color .12s linear; color: inherit; }
+  .karaoke .w.lit { color: var(--accent); }
+  /* 当前正在点亮的词：用渐变做半个词的平滑过渡 */
+  .karaoke .w.cur {
+    background: linear-gradient(90deg, var(--accent) var(--p, 0%), var(--text-strong) var(--p, 0%));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ---------- 底部控制栏 ---------- */
+  .controls {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 24px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 16px var(--shadow);
+  }
+  .play-btn {
+    border: 0; background: var(--accent); color: var(--bg);
+    width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 20px;
+    display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    transition: transform .15s;
+  }
+  .play-btn:hover { transform: scale(1.06); }
+
+  .time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-base); min-width: 92px; }
+
+  .progress { flex: 1; position: relative; height: 6px; background: var(--panel-2); border-radius: 3px; cursor: pointer; }
+  .progress .bar { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); border-radius: 3px; width: 0%; }
+  .progress .knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); left: 0%; box-shadow: 0 1px 4px var(--shadow); }
+
+  .ctl-group { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+  .ctl-group label { font-size: 12px; color: var(--text-base); white-space: nowrap; }
+  .ctl-group input[type="range"] { width: 92px; accent-color: var(--accent); }
+  .ctl-group .val { font-size: 12px; color: var(--text-strong); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .hint { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+          background: var(--panel-2); color: var(--text-base); font-size: 12px;
+          padding: 6px 14px; border-radius: 16px; opacity: .85; }
+</style>
+</head>
+<body data-theme="light" data-view="both" style="--fs:22px">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <span class="brand">字幕播放工具</span>
+    <span class="filename">My AI Design Workflow.txt</span>
+    <span class="spacer"></span>
+    <div class="seg-toggle" id="viewToggle">
+      <button data-view="both" class="active">双栏</button>
+      <button data-view="en">英文</button>
+      <button data-view="zh">中文</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="切换护眼主题">🌗</button>
+  </div>
+
+  <!-- 字幕舞台 -->
+  <div class="stage" id="stage"></div>
+
+  <div class="hint">点击任意一行可跳转 · 拖动进度条可定位</div>
+
+  <!-- 控制栏 -->
+  <div class="controls">
+    <button class="play-btn" id="playBtn">▶</button>
+    <span class="time" id="time">00:00 / 00:00</span>
+    <div class="progress" id="progress">
+      <div class="bar" id="bar"></div>
+      <div class="knob" id="knob"></div>
+    </div>
+    <div class="ctl-group">
+      <label>速度</label>
+      <input type="range" id="speed" min="0.5" max="2" step="0.25" value="1" />
+      <span class="val" id="speedVal">1.0x</span>
+    </div>
+    <div class="ctl-group">
+      <label>字号</label>
+      <input type="range" id="font" min="16" max="40" step="2" value="22" />
+      <span class="val" id="fontVal">22</span>
+    </div>
+  </div>
+
+<script>
+/* ====================== 示例数据（真实英文 + 演示中文译文） ====================== */
+/* 真实格式只有 start，end=下一行 start；这里预先算好便于演示 */
+const RAW = [
+  [0,  "There's a way to create beautiful designs, beautiful websites, beautiful apps, and I just learned about it.",
+       "有一种方法可以做出漂亮的设计、网站和应用，我刚刚学会了它。"],
+  [7,  "And it's through this thing called design.md, it's using skills, and the entire process is what we explain on this podcast.",
+       "它就是所谓的 design.md，用的是 skills，整套流程都会在这期播客里讲清楚。"],
+  [16, "I had my friend Mengto, one of the best designers I know, come on and share his entire workflow.",
+       "我请来了朋友 Mengto，我认识的最优秀的设计师之一，分享他完整的工作流。"],
+  [25, "By the end of this episode, you will become a designer.",
+       "听完这期，你就能成为一名设计师。"],
+  [31, "You're going to be able to create better design than 99.99% of this planet.",
+       "你将能做出超过这个星球上 99.99% 的人的设计。"],
+  [39, "And what does that mean? That means your startup, your idea, your app is going to have a higher chance of success.",
+       "这意味着什么？意味着你的创业、你的点子、你的应用会有更高的成功概率。"],
+  [48, "So enjoy the episode and I'll see you in there.",
+       "所以好好享受这期节目，我们正片里见。"],
+  [54, "Meng, welcome back. Second time on the pod.",
+       "Meng，欢迎回来，这是你第二次上节目了。"],
+  [60, "Google just came out with design.md and this is one way to create a blueprint.",
+       "谷歌刚刚推出了 design.md，这是一种创建设计蓝图的方式。"],
+  [69, "You can turn a beautiful design system into motion design, a landing page, and so on.",
+       "你可以把一套漂亮的设计系统变成动效设计、落地页等等。"],
+  [78, "A lot of people start really strong with one shot and then suddenly things get more generic.",
+       "很多人一开始一击即中，可越往后做就越平庸。"],
+  [86, "So this is what we're going to be learning today. I'm going to teach you all the tricks.",
+       "所以这就是我们今天要学的，我会把所有的技巧都教给你。"],
+  [94, "Typography, colors, all the things that people struggle with in design.",
+       "字体排印、配色，这些都是大家在设计里最头疼的部分。"],
+  [101, "Perfect. In your world, a lot of people are talking about design.md.",
+        "太好了。在你的圈子里，很多人都在聊 design.md。"],
+  [109, "But they want to create jaw-dropping beautiful designs, even if they're not a designer.",
+        "但他们想做出惊艳的设计，哪怕自己并不是设计师。"],
+  [118, "We don't want a purple vibe-coded website. We want something beautiful and consistent.",
+        "我们不想要那种紫色的随手糊出来的网站，我们要的是漂亮且统一的东西。"],
+];
+const TOTAL = 128; // 模拟音频总时长(秒)
+const segs = RAW.map((r, i) => ({
+  start: r[0],
+  end: i < RAW.length - 1 ? RAW[i + 1][0] : TOTAL,
+  en: r[1], zh: r[2],
+}));
+
+/* ====================== 渲染字幕行 ====================== */
+const stage = document.getElementById('stage');
+
+/* 把文本拆成词 span，并记录每个词的起始字符位置（用于按字符进度点亮） */
+function buildWords(text) {
+  const parts = text.split(/(\s+)/);   // 保留空白
+  let html = '', charPos = 0, total = text.length, meta = [];
+  for (const p of parts) {
+    if (/^\s+$/.test(p)) { html += p; charPos += p.length; continue; }
+    meta.push({ start: charPos, len: p.length });
+    html += `<span class="w" data-s="${charPos}" data-l="${p.length}">${p}</span>`;
+    charPos += p.length;
+  }
+  return { html, total };
+}
+
+segs.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'seg';
+  div.dataset.i = i;
+  const enW = buildWords(s.en);
+  const zhW = buildWords(s.zh);
+  div.dataset.enTotal = enW.total;
+  div.dataset.zhTotal = zhW.total;
+  div.innerHTML = `
+    <div class="en karaoke">${enW.html}</div>
+    <div class="zh karaoke">${zhW.html}</div>`;
+  div.addEventListener('click', () => seek(s.start + 0.01));
+  stage.appendChild(div);
+});
+const segEls = [...stage.querySelectorAll('.seg')];
+
+/* 按字符进度点亮某一行的词 */
+function paint(lineEl, total, prog) {
+  if (!lineEl) return;
+  const litChars = prog * total;
+  for (const w of lineEl.querySelectorAll('.w')) {
+    const s = +w.dataset.s, l = +w.dataset.l;
+    w.classList.remove('lit', 'cur');
+    if (s + l <= litChars) { w.classList.add('lit'); }
+    else if (s < litChars) {                       // 当前词：半亮渐变
+      w.classList.add('cur');
+      w.style.setProperty('--p', Math.max(0, Math.min(100, ((litChars - s) / l) * 100)) + '%');
+    }
+  }
+}
+function paintFull(lineEl, on) {
+  if (!lineEl) return;
+  for (const w of lineEl.querySelectorAll('.w')) {
+    w.classList.remove('cur'); w.style.removeProperty('--p');
+    w.classList.toggle('lit', on);
+  }
+}
+
+/* ====================== 播放引擎 ====================== */
+let t = 0, playing = false, speed = 1, lastTs = null, curIdx = -1;
+
+function fmt(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+}
+
+function render() {
+  // 当前行
+  let idx = segs.findIndex(s => t >= s.start && t < s.end);
+  if (idx === -1) idx = t >= TOTAL ? segs.length - 1 : 0;
+
+  if (idx !== curIdx) {
+    segEls.forEach((el, i) => {
+      el.classList.toggle('active', i === idx);
+      el.classList.toggle('near', Math.abs(i - idx) === 1);
+      // 已播过的行整行点亮，未播的行熄灭
+      if (i !== idx) {
+        paintFull(el.querySelector('.en'), i < idx);
+        paintFull(el.querySelector('.zh'), i < idx);
+      }
+    });
+    curIdx = idx;
+    segEls[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  // 当前行逐字进度（按字符线性插值）；中英双栏同时跑
+  const s = segs[idx], el = segEls[idx];
+  const prog = Math.min(1, Math.max(0, (t - s.start) / (s.end - s.start)));
+  paint(el.querySelector('.en'), +el.dataset.enTotal, prog);
+  paint(el.querySelector('.zh'), +el.dataset.zhTotal, prog);
+
+  // 进度条 & 时间
+  const pct = Math.min(100, (t / TOTAL) * 100);
+  bar.style.width = pct + '%';
+  knob.style.left = pct + '%';
+  timeEl.textContent = fmt(t) + ' / ' + fmt(TOTAL);
+}
+
+function loop(ts) {
+  if (!playing) return;
+  if (lastTs == null) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  t += dt * speed;
+  if (t >= TOTAL) { t = TOTAL; playing = false; playBtn.textContent = '▶'; }
+  render();
+  if (playing) requestAnimationFrame(loop);
+}
+
+function play() { if (playing) return; playing = true; lastTs = null; playBtn.textContent = '⏸'; requestAnimationFrame(loop); }
+function pause() { playing = false; playBtn.textContent = '▶'; }
+function seek(sec) { t = Math.min(TOTAL, Math.max(0, sec)); curIdx = -1; render(); }
+
+/* ====================== 控件绑定 ====================== */
+const playBtn = document.getElementById('playBtn');
+const bar = document.getElementById('bar');
+const knob = document.getElementById('knob');
+const timeEl = document.getElementById('time');
+const progress = document.getElementById('progress');
+
+playBtn.onclick = () => playing ? pause() : play();
+
+progress.onclick = (e) => {
+  const rect = progress.getBoundingClientRect();
+  seek(((e.clientX - rect.left) / rect.width) * TOTAL);
+};
+
+document.getElementById('speed').oninput = (e) => {
+  speed = parseFloat(e.target.value);
+  document.getElementById('speedVal').textContent = speed.toFixed(1) + 'x';
+};
+document.getElementById('font').oninput = (e) => {
+  document.body.style.setProperty('--fs', e.target.value + 'px');
+  document.getElementById('fontVal').textContent = e.target.value;
+};
+
+document.getElementById('viewToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  document.body.dataset.view = btn.dataset.view;
+  [...e.currentTarget.children].forEach(b => b.classList.toggle('active', b === btn));
+});
+
+document.getElementById('themeBtn').onclick = () => {
+  document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+};
+
+render();
+</script>
+</body>
+</html>
