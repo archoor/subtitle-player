@@ -1,7 +1,7 @@
 {
   "name": "subtitle-player-desktop",
   "productName": "SubtitlePlayer",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Subtitle Player desktop client (Electron shell + embedded Python backend)",
   "main": "main.js",
   "author": "xk",
