@@ -87,11 +87,15 @@ SSE 流式接口。每条事件：`data: {JSON}\n\n`
   "temperature": 0.3,
   "max_tokens": 4096,
   "batch_size": 16,
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
   "base_url_host": "dashscope.aliyuncs.com",
+  "base_url_source": "user",
   "api_key_configured": true,
+  "api_key_hint": "···abcd",
+  "api_key_source": "user",
+  "env_configured": false,
   "llm_available": true,
-  "has_user_config": false,
-  "env_model": "qwen3.6-flash"
+  "has_user_config": true
 }
 ```
 
@@ -101,6 +105,8 @@ SSE 流式接口。每条事件：`data: {JSON}\n\n`
 
 ```json
 {
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "api_key": "sk-...",
   "model": "qwen3.6-flash",
   "temperature": 0.3,
   "max_tokens": 4096,
@@ -108,11 +114,13 @@ SSE 流式接口。每条事件：`data: {JSON}\n\n`
 }
 ```
 
+`api_key` 可省略或留空以**保留已保存的 Key**。GET 响应不回传完整 Key（仅 `api_key_configured` 与 `api_key_hint`）。
+
 返回更新后的配置（与 GET 结构相同）。校验失败返回 `422`。
 
 ### `POST /api/translate-config/reset`
 
-删除用户覆盖项，返回 `.env` 默认配置。
+删除面板覆盖项，回退到 `.env` 或内置默认值。
 
 ---
 

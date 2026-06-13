@@ -87,11 +87,15 @@ Client disconnect aborts the stream; partial cache is retained.
   "temperature": 0.3,
   "max_tokens": 4096,
   "batch_size": 16,
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
   "base_url_host": "dashscope.aliyuncs.com",
+  "base_url_source": "user",
   "api_key_configured": true,
+  "api_key_hint": "···abcd",
+  "api_key_source": "user",
+  "env_configured": false,
   "llm_available": true,
-  "has_user_config": false,
-  "env_model": "qwen3.6-flash"
+  "has_user_config": true
 }
 ```
 
@@ -101,6 +105,8 @@ Client disconnect aborts the stream; partial cache is retained.
 
 ```json
 {
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "api_key": "sk-...",
   "model": "qwen3.6-flash",
   "temperature": 0.3,
   "max_tokens": 4096,
@@ -108,11 +114,13 @@ Client disconnect aborts the stream; partial cache is retained.
 }
 ```
 
+`api_key` may be omitted or left blank to **keep the previously saved key**. Never returned in GET responses (only `api_key_configured` + `api_key_hint`).
+
 Returns updated config (same shape as GET). `422` on validation error.
 
 ### `POST /api/translate-config/reset`
 
-Deletes user overrides; returns GET-shaped config with `.env` defaults.
+Deletes panel overrides; falls back to `.env` or built-in defaults.
 
 ---
 

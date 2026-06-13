@@ -440,6 +440,11 @@ async function fetchTranslateConfig() {
 }
 
 function fillSettingsForm(cfg) {
+  $("cfgBaseUrl").value = cfg.base_url || "";
+  $("cfgApiKey").value = "";
+  $("cfgApiKey").placeholder = cfg.api_key_configured
+    ? (cfg.api_key_hint ? t("cfgApiKeyKeepPlaceholder") + " " + cfg.api_key_hint : t("cfgApiKeyKeepPlaceholder"))
+    : t("cfgApiKeyPlaceholder");
   $("cfgModel").value = cfg.model || "";
   $("cfgTemperature").value = cfg.temperature ?? 0.3;
   $("cfgTemperatureVal").textContent = Number(cfg.temperature ?? 0.3).toFixed(2);
@@ -447,22 +452,27 @@ function fillSettingsForm(cfg) {
   $("cfgBatchSize").value = cfg.batch_size ?? 16;
   const keyOk = cfg.api_key_configured;
   const llmOk = cfg.llm_available;
+  const sourceLine = cfg.has_user_config
+    ? t("settingsMetaUserOverride")
+    : cfg.env_configured
+      ? t("settingsMetaEnvDefault")
+      : t("settingsMetaPanelDefault");
   $("settingsMeta").innerHTML = [
-    `${t("settingsMetaEndpoint")}：<strong>${escapeHtml(cfg.base_url_host || "-")}</strong>`,
+    `${t("settingsMetaEndpoint")}：<strong>${escapeHtml(cfg.base_url_host || "-")}</strong> (${escapeHtml(cfg.base_url_source || "-")})`,
     `${t("settingsMetaApiKey")}：${keyOk
-      ? `<span class="ok">${t("settingsMetaConfigured")}</span>`
+      ? `<span class="ok">${t("settingsMetaConfigured")}${cfg.api_key_hint ? " " + escapeHtml(cfg.api_key_hint) : ""}</span>`
       : `<span class="warn">${t("settingsMetaNotConfigured")}</span>`}`,
     `${t("settingsMetaTranslate")}：${llmOk
       ? `<span class="ok">${t("settingsMetaAvailable")}</span>`
       : `<span class="warn">${t("settingsMetaUnavailable")}</span>`}`,
-    cfg.has_user_config
-      ? t("settingsMetaUserOverride")
-      : t("settingsMetaEnvDefault", { model: escapeHtml(cfg.env_model || "-") }),
+    sourceLine,
   ].join("<br>");
 }
 
 function readSettingsForm() {
   return {
+    base_url: $("cfgBaseUrl").value.trim(),
+    api_key: $("cfgApiKey").value.trim(),
     model: $("cfgModel").value.trim(),
     temperature: parseFloat($("cfgTemperature").value),
     max_tokens: parseInt($("cfgMaxTokens").value, 10),
@@ -486,6 +496,11 @@ async function openSettings() {
 async function saveSettings() {
   const body = readSettingsForm();
   if (!body.model) { toast(t("modelRequired")); return; }
+  if (!body.base_url) { toast(t("baseUrlRequired")); return; }
+  if (!body.api_key && !translateConfig?.api_key_configured) {
+    toast(t("apiKeyRequired"));
+    return;
+  }
   try {
     const res = await fetch("/api/translate-config", {
       method: "PUT",
@@ -498,6 +513,7 @@ async function saveSettings() {
       return;
     }
     translateConfig = data;
+    state.llm = data.llm_available;
     closeSettingsModal();
     toast(t("saveOk"));
     if (state.segs.length) updateBanner();

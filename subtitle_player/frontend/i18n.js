@@ -29,9 +29,12 @@
       settingsModalTitle: "Translation model settings",
       settingsClose: "Close",
       settingsHint:
-        "Configure API key and base URL in project root <code>.env</code>; adjust model and generation params here. Changes apply immediately after save.",
-      settingsHintDesktop:
-        "Configure API key in <code>%APPDATA%\\SubtitlePlayer\\.env</code>; adjust model and generation params here. Changes apply immediately after save.",
+        "Set Base URL, API Key, and model in this panel (saved locally). Optional <code>.env</code> is used as fallback when fields are empty.",
+      cfgBaseUrl: "Base URL",
+      cfgApiKey: "API Key",
+      cfgApiKeyNote: "Leave blank to keep the saved key",
+      cfgApiKeyPlaceholder: "Enter API key",
+      cfgApiKeyKeepPlaceholder: "Saved (leave blank to keep)",
       cfgModel: "Model",
       cfgTemperature: "Temperature",
       cfgMaxTokens: "Max tokens",
@@ -52,9 +55,9 @@
         "Loaded {n} segments ({lang}), restored {done}/{total} translations ({pct}%), can continue",
       translating: "Translating… {done}/{total} ({pending} pending, untranslated lines show «{pendingText}»)",
       cachePartialNoLlm:
-        "Restored {done}/{total} {target} translations ({pct}%) from cache; DashScope not configured, cannot continue.",
+        "Restored {done}/{total} {target} translations ({pct}%) from cache; API not configured — open ⚙ Settings to add URL & Key.",
       cacheNoneNoLlm:
-        "No {target} translation yet; DashScope not configured (set DASHSCOPE_API_KEY in .env), auto-translate disabled.",
+        "No {target} translation yet; API not configured — open ⚙ Settings (or optional .env fallback).",
       cachePartial:
         "Restored {done}/{total} {target} translations ({pct}%), {pending} remaining. Play while translating; untranslated lines show «{pendingText}».",
       noTranslation:
@@ -68,9 +71,11 @@
       translateDisconnected: "Translation connection lost",
       configReadFailed: "Failed to read config: {msg}",
       modelRequired: "Please enter a model name",
+      baseUrlRequired: "Please enter a Base URL",
+      apiKeyRequired: "Please enter an API Key",
       saveFailed: "Save failed: {msg}",
       saveOk: "Translation settings saved; applies on next translation",
-      resetOk: "Reset to .env defaults",
+      resetOk: "Panel settings cleared; using .env or defaults",
       resetFailed: "Reset failed: {msg}",
       settingsMetaEndpoint: "Endpoint",
       settingsMetaApiKey: "API Key",
@@ -79,8 +84,9 @@
       settingsMetaNotConfigured: "not configured",
       settingsMetaAvailable: "available",
       settingsMetaUnavailable: "unavailable",
-      settingsMetaUserOverride: "Using custom UI parameters",
-      settingsMetaEnvDefault: "Default model from .env ({model}) when not customized",
+      settingsMetaUserOverride: "Using panel settings (panel overrides .env)",
+      settingsMetaEnvDefault: "Using .env fallback (no panel overrides)",
+      settingsMetaPanelDefault: "Using built-in defaults (configure panel or .env)",
       loadingTitle: "Subtitle Player",
       loadingTip: "Starting local server, please wait…",
     },
@@ -106,9 +112,12 @@
       settingsModalTitle: "翻译模型设置",
       settingsClose: "关闭",
       settingsHint:
-        "API Key 与接口地址请在项目根 <code>.env</code> 配置；此处可调整模型与生成参数，保存后立即生效。",
-      settingsHintDesktop:
-        "API Key 请在 <code>%APPDATA%\\SubtitlePlayer\\.env</code> 配置；此处可调整模型与生成参数，保存后立即生效。",
+        "在此面板填写 Base URL、API Key 与模型（保存到本地）。未填写时可选读 <code>.env</code> 作为兜底。",
+      cfgBaseUrl: "接口地址 Base URL",
+      cfgApiKey: "API Key",
+      cfgApiKeyNote: "留空则保留已保存的 Key",
+      cfgApiKeyPlaceholder: "填写 API Key",
+      cfgApiKeyKeepPlaceholder: "已保存（留空不修改）",
       cfgModel: "模型",
       cfgTemperature: "Temperature",
       cfgMaxTokens: "Max tokens",
@@ -130,9 +139,9 @@
       translating:
         "翻译中… {done}/{total}（{pending} 段待译，未译段落显示「{pendingText}」）",
       cachePartialNoLlm:
-        "已从缓存恢复 {done}/{total} 段{target}译文（{pct}%）；未检测到百炼配置，无法继续翻译。",
+        "已从缓存恢复 {done}/{total} 段{target}译文（{pct}%）；未配置 API，请在 ⚙ 设置中填写接口与 Key。",
       cacheNoneNoLlm:
-        "该字幕暂无{target}译文；未检测到百炼配置（.env 的 DASHSCOPE_API_KEY），无法自动翻译。",
+        "该字幕暂无{target}译文；未配置 API，请打开 ⚙ 设置（或使用可选的 .env 兜底）。",
       cachePartial:
         "已从缓存恢复 {done}/{total} 段{target}译文（{pct}%），剩余 {pending} 段。可边播放边继续翻译，未译段落显示「{pendingText}」。",
       noTranslation:
@@ -146,9 +155,11 @@
       translateDisconnected: "翻译连接中断",
       configReadFailed: "读取配置失败：{msg}",
       modelRequired: "请填写模型名",
+      baseUrlRequired: "请填写接口地址 Base URL",
+      apiKeyRequired: "请填写 API Key",
       saveFailed: "保存失败：{msg}",
       saveOk: "翻译参数已保存，下次翻译立即生效",
-      resetOk: "已恢复为 .env 默认",
+      resetOk: "已清除面板配置，回退到 .env 或默认值",
       resetFailed: "恢复失败：{msg}",
       settingsMetaEndpoint: "接口",
       settingsMetaApiKey: "API Key",
@@ -157,8 +168,9 @@
       settingsMetaNotConfigured: "未配置",
       settingsMetaAvailable: "可用",
       settingsMetaUnavailable: "不可用",
-      settingsMetaUserOverride: "当前使用页面自定义参数",
-      settingsMetaEnvDefault: "未自定义时模型默认读 .env（{model}）",
+      settingsMetaUserOverride: "当前使用面板配置（优先于 .env）",
+      settingsMetaEnvDefault: "当前使用 .env 兜底（面板未覆盖）",
+      settingsMetaPanelDefault: "当前使用内置默认（请在面板或 .env 中配置）",
       loadingTitle: "字幕播放工具",
       loadingTip: "正在启动本地服务，请稍候…",
     },

@@ -134,26 +134,26 @@ uv run python subtitle_player/run.py --port 9000 --no-open
 
 ## Translation
 
-- Uses **Alibaba Cloud DashScope** (OpenAI-compatible API). Default model: `qwen3.6-flash`.
-- API key and base URL: project root `.env` (see [`.env.example`](.env.example)); model parameters can be changed in the **⚙ Settings** UI (saved to the user data directory).
+**Panel-first, `.env` optional fallback.** Open **⚙ Settings** to configure Base URL, API Key, and model — saved to the user data directory and effective immediately. If panel fields are empty, the app falls back to `.env` (see [`.env.example`](.env.example)).
 
-| Variable | Description |
-|----------|-------------|
-| `DASHSCOPE_OPENAI_BASE_URL` | DashScope compatible endpoint (default `https://dashscope.aliyuncs.com/compatible-mode/v1`) |
-| `DASHSCOPE_API_KEY` | DashScope API key |
-| `TRANSLATE_MODEL` | Default model `qwen3.6-flash` (overridable in UI) |
+- Default endpoint: Alibaba Cloud **DashScope** (`https://dashscope.aliyuncs.com/compatible-mode/v1`), model `qwen3.6-flash`.
+- Also supports any OpenAI-compatible API.
 
-UI parameters: `model`, `temperature` (0–2), `max_tokens` (256–16384), `batch_size` (1–32, default 16).
+| Panel / `.env` variable | Description |
+|-------------------------|-------------|
+| Base URL | OpenAI-compatible endpoint |
+| API Key | Service API key |
+| Model | e.g. `qwen3.6-flash` — **optional in `.env`**; set in ⚙ Settings or use built-in default |
 
-Priority: `TRANSLATE_BASE_URL` / `TRANSLATE_API_KEY` → `DASHSCOPE_*` → generic `get_llm_config()` fallback.
+Additional panel parameters: `temperature` (0–2), `max_tokens` (256–16384), `batch_size` (1–32).
 
-DashScope calls **ignore system proxies** (`HTTP(S)_PROXY` / `ALL_PROXY`) for direct domestic access.
+**Priority per field:** panel `translate_config.json` → `.env` (`TRANSLATE_*` / `DASHSCOPE_*` / `BASE_URL`+`API_KEY`) → built-in defaults.
 
-Without API config, English playback still works; translation is disabled (banner explains why).
+DashScope calls **ignore system proxies** for direct domestic access.
 
-Translations cache as `xxx.bilingual.json` next to the subtitle file. Delete to force re-translation. Chinese source subtitles get English in the EN column.
+Without API credentials, playback still works; translation is disabled (banner points to ⚙ Settings).
 
-Restart the server after changing **API key / base URL** in `.env`; model parameters apply immediately after saving in ⚙.
+Translations cache as `xxx.bilingual.json` next to the subtitle file. Delete to force re-translation.
 
 ---
 
@@ -198,19 +198,19 @@ Output: `subtitle_player/desktop/release/SubtitlePlayer.exe` (~345 MB).
 
 > Build uses `compression: store` (no compression). Re-enabling 7z compression can hang on large apps; store is faster and more reliable.
 
-### `.env` for packaged exe
+### `.env` optional fallback
 
-The portable exe is not in the repo tree. `.env` lookup order:
+No `.env` required if you configure everything in **⚙ Settings**. For team defaults or development, optional `.env` lookup order:
 
 1. Same directory as the exe
-2. `%APPDATA%\SubtitlePlayer\.env` ← **recommended** (portable exe extracts to a temp dir each run)
-3. Project root `.env` (development only)
+2. `%APPDATA%\SubtitlePlayer\.env`
+3. Project root `.env` (development)
 
 ```powershell
-Copy-Item .\.env "$env:APPDATA\SubtitlePlayer\.env"
+Copy-Item .\.env "$env:APPDATA\SubtitlePlayer\.env"   # optional
 ```
 
-Uploads and `translate_config.json` also live under `%APPDATA%\SubtitlePlayer\`.
+Uploads and `translate_config.json` live under `%APPDATA%\SubtitlePlayer\`.
 
 ---
 

@@ -51,7 +51,7 @@ Subtitle Player 是一款**本地字幕阅读器 + 卡拉OK式歌词高亮工具
 `.srt`、`.vtt`，以及 FunASR 风格 `.txt`（行首 `[hh:mm:ss]` 或 `[mm:ss]`）。
 
 **能把英文字幕翻译成中文吗？**  
-可以。在 `.env` 配置 `DASHSCOPE_API_KEY`（或兼容接口）。翻译通过 SSE 边播边推，结果缓存到字幕同目录。
+可以。打开 **⚙ 设置** 填写 Base URL 与 API Key 即可（无需 `.env`）；也可选用 `.env` 作为兜底。翻译通过 SSE 边播边推，结果缓存到字幕同目录。
 
 **离线能用吗？**  
 播放和已有 `.bilingual.json` 缓存可离线；**新翻译**需要网络和 API Key。
@@ -138,23 +138,26 @@ uv run python subtitle_player/run.py --port 9000 --no-open
 
 ## 中文译文（翻译）
 
-- 翻译走**阿里云百炼 DashScope**（OpenAI 兼容），默认模型 `qwen3.6-flash`。
-- 配置读项目根 `.env`（见 [`.env.example`](.env.example)）；**页面 ⚙ 设置** 可改模型名、temperature、max_tokens、每批段数，保存后立即生效（写入用户数据目录的 `translate_config.json`）。
+**面板优先，`.env` 可选兜底。** 打开 **⚙ 设置** 配置 Base URL、API Key、模型 — 保存到用户数据目录，**立即生效**。面板未填写的项会回退读 `.env`（见 [`.env.example`](.env.example)）。
 
-  | 变量 | 说明 |
-  |------|------|
-  | `DASHSCOPE_OPENAI_BASE_URL` | 百炼兼容地址（默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`） |
-  | `DASHSCOPE_API_KEY` | 百炼 API Key |
-  | `TRANSLATE_MODEL` | 翻译模型默认值 `qwen3.6-flash`（页面可覆盖） |
+- 默认接口：阿里云**百炼 DashScope**（`https://dashscope.aliyuncs.com/compatible-mode/v1`），模型 `qwen3.6-flash`。
+- 也支持任意 OpenAI 兼容接口。
 
-  页面可配参数：`model`、`temperature`（0~2）、`max_tokens`（256~16384）、`batch_size`（1~32，默认 16）。
+| 面板 / `.env` 变量 | 说明 |
+|-------------------|------|
+| Base URL | OpenAI 兼容接口地址 |
+| API Key | 服务密钥 |
+| Model | 如 `qwen3.6-flash` — **`.env` 中可选**；可在 ⚙ 设置中配置或使用内置默认 |
 
-  优先级：`TRANSLATE_BASE_URL/TRANSLATE_API_KEY` → `DASHSCOPE_*`；百炼缺失时回退到通用 `get_llm_config()`。
-- 百炼为国内直连，调用时**自动忽略系统代理**（`HTTP(S)_PROXY` / `ALL_PROXY`）。
-- 未配置时仍可正常播放英文，只是无法自动翻译（提示条会说明）。
-- 翻译结果缓存为字幕同目录的同名 `xxx.bilingual.json`；删除该文件即可强制重译。
-- 源中文字幕同理：会反向翻译出英文填充英文栏。
-- 改了 `.env` 的 **API Key / 接口** 需**重启服务**；模型与生成参数在页面 ⚙ 保存即可，无需重启。
+面板还可调：`temperature`（0~2）、`max_tokens`（256~16384）、`batch_size`（1~32）。
+
+**每项优先级：** 面板 `translate_config.json` → `.env`（`TRANSLATE_*` / `DASHSCOPE_*` / `BASE_URL`+`API_KEY`）→ 内置默认。
+
+百炼为国内直连，调用时**自动忽略系统代理**。
+
+未配置 API 时仍可正常播放字幕，只是无法自动翻译（提示条引导打开 ⚙ 设置）。
+
+翻译结果缓存为字幕同目录的同名 `xxx.bilingual.json`；删除该文件即可强制重译。
 
 ---
 
@@ -200,22 +203,19 @@ npm run dist
 
 > 打包采用 `compression: store`（不压缩）。若改回压缩，electron-builder 对这种大体积应用的 7z 压缩可能长时间卡住，故默认关闭压缩，换更快、更稳的构建。
 
-### 打包后的 `.env`（翻译 API Key）
+### `.env` 可选兜底（桌面版）
 
-打包后的 exe 不在项目目录里，因此**翻译用的 `.env` 需要放到固定位置**，查找优先级：
+**不必配置 `.env`**，在 ⚙ 设置里填 URL/Key 即可。若希望团队统一默认值，可选用 `.env`，查找优先级：
 
 1. `exe 同目录/.env`
-2. `%APPDATA%\SubtitlePlayer\.env` ← **推荐**（portable exe 每次解压到临时目录，只有此处稳定）
-3. 项目根 `.env`（仅开发态有效）
-
-把含 `DASHSCOPE_API_KEY` 的 `.env` 复制到 `%APPDATA%\SubtitlePlayer\.env` 即可启用翻译：
+2. `%APPDATA%\SubtitlePlayer\.env`
+3. 项目根 `.env`（仅开发态）
 
 ```powershell
-Copy-Item .\.env "$env:APPDATA\SubtitlePlayer\.env"
+Copy-Item .\.env "$env:APPDATA\SubtitlePlayer\.env"   # 可选
 ```
 
-未放置时仍可正常播放字幕，只是无法自动翻译（页面提示条会说明）。
-上传文件、翻译模型配置（`translate_config.json`）也统一存到 `%APPDATA%\SubtitlePlayer\`。
+上传文件与 `translate_config.json` 统一存到 `%APPDATA%\SubtitlePlayer\`。
 
 ---
 

@@ -37,6 +37,8 @@ app = FastAPI(title="字幕播放工具")
 
 class TranslateConfigBody(BaseModel):
     model: str = Field(..., min_length=1, description="翻译模型名")
+    base_url: str = Field("", description="OpenAI 兼容 API Base URL")
+    api_key: str = Field("", description="API Key；留空表示保留已保存的 Key")
     temperature: float = Field(0.3, ge=0.0, le=2.0)
     max_tokens: int = Field(4096, ge=256, le=16384)
     batch_size: int = Field(16, ge=1, le=32)
@@ -65,7 +67,7 @@ def put_translate_config(body: TranslateConfigBody) -> dict:
 
 @app.post("/api/translate-config/reset")
 def post_translate_config_reset() -> dict:
-    """恢复为 .env 默认（删除用户覆盖文件）。"""
+    """删除面板覆盖项，回退到 .env / 默认值。"""
     reset_user_config()
     return get_config_public()
 
