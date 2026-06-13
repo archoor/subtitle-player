@@ -2,6 +2,11 @@
 
 [English](README.md) | **简体中文**
 
+[![Release](https://img.shields.io/github/v/release/archoor/subtitle-player)](https://github.com/archoor/subtitle-player/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> **代码仓库：** https://github.com/archoor/subtitle-player
+
 > **开源定时字幕阅读器**：支持 `.srt`、`.vtt`、FunASR `[hh:mm:ss]` `.txt` 转写稿 — **自动滚动**、**卡拉OK/MTV 逐字高亮**、**中英双语对照**、**LLM 字幕翻译**（百炼 DashScope / 通义千问）、**Windows 便携单文件 exe**。无需视频：仅凭字幕文件即可跟读练听力。
 
 加载带时间戳的字幕文件，**模拟按时间播放**：自动下滚 + MTV 跑马灯逐字高亮，支持中英双语（英上中下窄屏堆叠）、护眼配色、速度与字号调节，中文译文按需用 LLM 生成并缓存。

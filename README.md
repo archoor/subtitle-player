@@ -2,6 +2,11 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[![Release](https://img.shields.io/github/v/release/archoor/subtitle-player)](https://github.com/archoor/subtitle-player/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> **Repository:** https://github.com/archoor/subtitle-player
+
 > **Open-source timed subtitle viewer** for `.srt`, `.vtt`, and FunASR `[hh:mm:ss]` `.txt` transcripts — with **auto-scroll**, **karaoke / MTV-style word highlight**, **bilingual EN↔ZH display**, **LLM subtitle translation** (DashScope / Qwen), and a **portable Windows `.exe`**. No video required: practice language listening & reading from transcript files alone.
 
 Load timestamped subtitle files and **simulate timed playback**: auto-scroll, MTV-style word-by-word highlight, bilingual display (English above Chinese in a narrow stacked column), eye-care themes, speed and font-size controls. Chinese translations are generated on demand via LLM and cached locally.
