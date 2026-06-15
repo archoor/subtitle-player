@@ -105,12 +105,56 @@ html, body {
   transition: background .2s; flex-shrink: 0;
 }
 .icon-btn:hover { background: var(--btn-hover); }
+.icon-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .topbar-tools {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.download-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.download-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.download-menu[hidden] { display: none; }
+
+.download-menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+
+.download-menu-item:hover:not(:disabled) { background: var(--btn-hover); }
+
+.download-menu-item:disabled {
+  opacity: .4;
+  cursor: not-allowed;
 }
 
 /* ---------- 文件区布局（桌面端窗口固定单栏 450，三视图统一） ----------

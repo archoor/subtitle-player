@@ -22,6 +22,7 @@ function syncLayout() {
 // ---------- 状态 ----------
 let state = {
   path: "",
+  displayName: "",
   srcLang: "en",
   duration: 0,
   translated: false,
@@ -33,7 +34,7 @@ let translateEs = null;
 let translateRunning = false;
 let translateAbortSilent = false;
 const IS_DESKTOP = !!(window.desktop && window.desktop.isElectron);
-const t = (key, params) => I18n.t(key, params);
+const tr = (key, params) => I18n.t(key, params);
 
 function pendingText() { return I18n.pendingText; }
 
@@ -47,6 +48,98 @@ function escapeHtml(s) {
 function fmt(sec) {
   sec = Math.max(0, Math.floor(sec));
   return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+}
+
+/** funasr 风格时间戳：[hh:mm:ss] 或不足 1 小时时 [mm:ss] */
+function fmtSubtitleTs(sec) {
+  sec = Math.max(0, sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) {
+    return `[${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}]`;
+  }
+  return `[${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}]`;
+}
+
+function langSubtitleReady(field) {
+  return state.segs.length > 0 && state.segs.every((s) => s[field] && s[field].trim());
+}
+
+function bilingualSubtitleReady() {
+  return langSubtitleReady("en") && langSubtitleReady("zh");
+}
+
+function updateDownloadBtn() {
+  const hasSegs = state.segs.length > 0;
+  $("downloadBtn").disabled = !hasSegs;
+  const zhItem = $("downloadMenu").querySelector('[data-dl="zh"]');
+  const enItem = $("downloadMenu").querySelector('[data-dl="en"]');
+  const bothItem = $("downloadMenu").querySelector('[data-dl="both"]');
+  if (zhItem) zhItem.disabled = !langSubtitleReady("zh");
+  if (enItem) enItem.disabled = !langSubtitleReady("en");
+  if (bothItem) bothItem.disabled = !bilingualSubtitleReady();
+}
+
+function downloadBaseName() {
+  const raw = state.displayName || state.path.replace(/^.*[\\/]/, "") || "subtitle";
+  return raw.replace(/\.[^.]+$/, "");
+}
+
+function buildSubtitleText(field) {
+  return state.segs
+    .map((s) => `${fmtSubtitleTs(s.start)} ${s[field].trim()}`)
+    .join("\n");
+}
+
+function buildBilingualSubtitleText() {
+  return state.segs
+    .map((s) => `${fmtSubtitleTs(s.start)} ${s.en.trim()} | ${s.zh.trim()}`)
+    .join("\n");
+}
+
+function triggerFileDownload(text, filename) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadSubtitle(kind) {
+  const base = downloadBaseName();
+  if (kind === "zh") {
+    if (!langSubtitleReady("zh")) { toast(tr("downloadNotReady"), 2800); return; }
+    triggerFileDownload(buildSubtitleText("zh"), `${base}.zh.txt`);
+    toast(tr("downloadOk"));
+  } else if (kind === "en") {
+    if (!langSubtitleReady("en")) { toast(tr("downloadEnNotReady"), 2800); return; }
+    triggerFileDownload(buildSubtitleText("en"), `${base}.en.txt`);
+    toast(tr("downloadOkEn"));
+  } else if (kind === "both") {
+    if (!bilingualSubtitleReady()) { toast(tr("downloadBothNotReady"), 2800); return; }
+    triggerFileDownload(buildBilingualSubtitleText(), `${base}.bilingual.txt`);
+    toast(tr("downloadOkBoth"));
+  }
+  closeDownloadMenu();
+}
+
+function openDownloadMenu() {
+  if ($("downloadBtn").disabled) return;
+  $("downloadMenu").hidden = false;
+  $("downloadBtn").setAttribute("aria-expanded", "true");
+}
+
+function closeDownloadMenu() {
+  $("downloadMenu").hidden = true;
+  $("downloadBtn").setAttribute("aria-expanded", "false");
+}
+
+function toggleDownloadMenu() {
+  if ($("downloadMenu").hidden) openDownloadMenu();
+  else closeDownloadMenu();
 }
 function toast(msg, ms = 2200) {
   const el = $("toast");
@@ -160,6 +253,7 @@ async function onFilePicked(e) {
 
 function applySubtitleData(data) {
   state.path = data.source_file;
+  state.displayName = data.display_name || "";
   state.srcLang = data.src_lang;
   state.duration = data.duration;
   state.translated = data.translated;
@@ -173,6 +267,7 @@ function applySubtitleData(data) {
   renderSubtitle();
   seek(0);
   updateBanner();
+  updateDownloadBtn();
   toast(buildLoadToast());
 }
 
@@ -182,26 +277,26 @@ function buildLoadToast() {
   const n = state.segs.length;
   const { done, total, pending, pct } = translationStats();
   if (state.translated) {
-    return t("loadSegmentsTranslated", { n, lang });
+    return tr("loadSegmentsTranslated", { n, lang });
   }
   if (done > 0 && pending > 0) {
-    return t("loadSegmentsPartial", { n, lang, done, total, pct });
+    return tr("loadSegmentsPartial", { n, lang, done, total, pct });
   }
-  return t("loadSegments", { n, lang });
+  return tr("loadSegments", { n, lang });
 }
 
 async function uploadAndLoad(file) {
   abortTranslate({ silent: true });
-  toast(t("uploading"));
+  toast(tr("uploading"));
   const fd = new FormData();
   fd.append("file", file, file.name);
   try {
     const res = await fetch("/api/subtitle/upload", { method: "POST", body: fd });
     const data = await res.json();
-    if (data.error) { toast(t("loadFailed", { msg: data.error }), 4000); return; }
+    if (data.error) { toast(tr("loadFailed", { msg: data.error }), 4000); return; }
     applySubtitleData(data);
   } catch (e) {
-    toast(t("loadFailed", { msg: e.message }), 4000);
+    toast(tr("loadFailed", { msg: e.message }), 4000);
   }
 }
 
@@ -216,14 +311,14 @@ async function pickViaDesktop() {
 /** 桌面客户端：按绝对路径解析（GET /api/subtitle?path=）。 */
 async function loadByPath(path) {
   abortTranslate({ silent: true });
-  toast(t("parsing"));
+  toast(tr("parsing"));
   try {
     const res = await fetch("/api/subtitle?path=" + encodeURIComponent(path));
     const data = await res.json();
-    if (data.error) { toast(t("loadFailed", { msg: data.error }), 4000); return; }
+    if (data.error) { toast(tr("loadFailed", { msg: data.error }), 4000); return; }
     applySubtitleData(data);
   } catch (e) {
-    toast(t("loadFailed", { msg: e.message }), 4000);
+    toast(tr("loadFailed", { msg: e.message }), 4000);
   }
 }
 
@@ -261,7 +356,7 @@ function setTranslateProgressBar(done, total) {
 function setTranslateProgressActive() {
   const { done, total, pending } = translationStats();
   setTranslateProgressBar(done, total);
-  $("bannerText").textContent = t("translating", {
+  $("bannerText").textContent = tr("translating", {
     done, total, pending, pendingText: pendingText(),
   });
 }
@@ -284,11 +379,11 @@ function updateBanner() {
 
   if (!state.llm) {
     if (done > 0) {
-      $("bannerText").textContent = t("cachePartialNoLlm", { done, total, target: targetName, pct });
+      $("bannerText").textContent = tr("cachePartialNoLlm", { done, total, target: targetName, pct });
       $("bannerProg").style.display = "";
       setTranslateProgressBar(done, total);
     } else {
-      $("bannerText").textContent = t("cacheNoneNoLlm", { target: targetName });
+      $("bannerText").textContent = tr("cacheNoneNoLlm", { target: targetName });
       $("bannerProg").style.display = "none";
     }
     $("translateBtn").style.display = "none";
@@ -296,22 +391,22 @@ function updateBanner() {
     setTranslateProgressActive();
     $("translateBtn").style.display = "";
     $("translateBtn").disabled = true;
-    $("translateBtn").textContent = t("translatingBtn");
+    $("translateBtn").textContent = tr("translatingBtn");
     $("bannerProg").style.display = "";
   } else if (done > 0 && pending > 0) {
-    $("bannerText").textContent = t("cachePartial", {
+    $("bannerText").textContent = tr("cachePartial", {
       done, total, target: targetName, pct, pending, pendingText: pt,
     });
     $("translateBtn").style.display = "";
     $("translateBtn").disabled = false;
-    $("translateBtn").textContent = t("continueTranslate", { pending });
+    $("translateBtn").textContent = tr("continueTranslate", { pending });
     $("bannerProg").style.display = "";
     setTranslateProgressBar(done, total);
   } else {
-    $("bannerText").textContent = t("noTranslation", { target: targetName, pendingText: pt });
+    $("bannerText").textContent = tr("noTranslation", { target: targetName, pendingText: pt });
     $("translateBtn").style.display = "";
     $("translateBtn").disabled = false;
-    $("translateBtn").textContent = t("generateTarget", { target: targetName });
+    $("translateBtn").textContent = tr("generateTarget", { target: targetName });
     $("bannerProg").style.display = "none";
   }
   banner.classList.add("show");
@@ -339,18 +434,20 @@ function doTranslate() {
         }
       }
       setTranslateProgressActive();
+      updateDownloadBtn();
     } else if (msg.type === "error") {
-      toast(t("translateError", { msg: msg.message }), 4000);
+      toast(tr("translateError", { msg: msg.message }), 4000);
     } else if (msg.type === "done") {
       state.translated = msg.translated;
       translateRunning = false;
       translateEs.close();
       translateEs = null;
       updateBanner();
-      if (msg.translated) toast(t("translateDone"));
+      updateDownloadBtn();
+      if (msg.translated) toast(tr("translateDone"));
       else {
         const { done, total } = translationStats();
-        toast(t("translatePaused", { done, total }), 3500);
+        toast(tr("translatePaused", { done, total }), 3500);
       }
     }
   };
@@ -360,7 +457,7 @@ function doTranslate() {
     translateAbortSilent = false;
     abortTranslate();
     updateBanner();
-    if (!silent) toast(t("translateDisconnected"), 3000);
+    if (!silent) toast(tr("translateDisconnected"), 3000);
   };
 }
 
@@ -443,8 +540,8 @@ function fillSettingsForm(cfg) {
   $("cfgBaseUrl").value = cfg.base_url || "";
   $("cfgApiKey").value = "";
   $("cfgApiKey").placeholder = cfg.api_key_configured
-    ? (cfg.api_key_hint ? t("cfgApiKeyKeepPlaceholder") + " " + cfg.api_key_hint : t("cfgApiKeyKeepPlaceholder"))
-    : t("cfgApiKeyPlaceholder");
+    ? (cfg.api_key_hint ? tr("cfgApiKeyKeepPlaceholder") + " " + cfg.api_key_hint : tr("cfgApiKeyKeepPlaceholder"))
+    : tr("cfgApiKeyPlaceholder");
   $("cfgModel").value = cfg.model || "";
   $("cfgTemperature").value = cfg.temperature ?? 0.3;
   $("cfgTemperatureVal").textContent = Number(cfg.temperature ?? 0.3).toFixed(2);
@@ -453,18 +550,18 @@ function fillSettingsForm(cfg) {
   const keyOk = cfg.api_key_configured;
   const llmOk = cfg.llm_available;
   const sourceLine = cfg.has_user_config
-    ? t("settingsMetaUserOverride")
+    ? tr("settingsMetaUserOverride")
     : cfg.env_configured
-      ? t("settingsMetaEnvDefault")
-      : t("settingsMetaPanelDefault");
+      ? tr("settingsMetaEnvDefault")
+      : tr("settingsMetaPanelDefault");
   $("settingsMeta").innerHTML = [
-    `${t("settingsMetaEndpoint")}：<strong>${escapeHtml(cfg.base_url_host || "-")}</strong> (${escapeHtml(cfg.base_url_source || "-")})`,
-    `${t("settingsMetaApiKey")}：${keyOk
-      ? `<span class="ok">${t("settingsMetaConfigured")}${cfg.api_key_hint ? " " + escapeHtml(cfg.api_key_hint) : ""}</span>`
-      : `<span class="warn">${t("settingsMetaNotConfigured")}</span>`}`,
-    `${t("settingsMetaTranslate")}：${llmOk
-      ? `<span class="ok">${t("settingsMetaAvailable")}</span>`
-      : `<span class="warn">${t("settingsMetaUnavailable")}</span>`}`,
+    `${tr("settingsMetaEndpoint")}：<strong>${escapeHtml(cfg.base_url_host || "-")}</strong> (${escapeHtml(cfg.base_url_source || "-")})`,
+    `${tr("settingsMetaApiKey")}：${keyOk
+      ? `<span class="ok">${tr("settingsMetaConfigured")}${cfg.api_key_hint ? " " + escapeHtml(cfg.api_key_hint) : ""}</span>`
+      : `<span class="warn">${tr("settingsMetaNotConfigured")}</span>`}`,
+    `${tr("settingsMetaTranslate")}：${llmOk
+      ? `<span class="ok">${tr("settingsMetaAvailable")}</span>`
+      : `<span class="warn">${tr("settingsMetaUnavailable")}</span>`}`,
     sourceLine,
   ].join("<br>");
 }
@@ -489,16 +586,16 @@ async function openSettings() {
     fillSettingsForm(translateConfig);
     openSettingsModal();
   } catch (e) {
-    toast(t("configReadFailed", { msg: e.message }), 3500);
+    toast(tr("configReadFailed", { msg: e.message }), 3500);
   }
 }
 
 async function saveSettings() {
   const body = readSettingsForm();
-  if (!body.model) { toast(t("modelRequired")); return; }
-  if (!body.base_url) { toast(t("baseUrlRequired")); return; }
+  if (!body.model) { toast(tr("modelRequired")); return; }
+  if (!body.base_url) { toast(tr("baseUrlRequired")); return; }
   if (!body.api_key && !translateConfig?.api_key_configured) {
-    toast(t("apiKeyRequired"));
+    toast(tr("apiKeyRequired"));
     return;
   }
   try {
@@ -509,16 +606,16 @@ async function saveSettings() {
     });
     const data = await res.json();
     if (!res.ok || data.error) {
-      toast(t("saveFailed", { msg: data.error || res.statusText }), 3500);
+      toast(tr("saveFailed", { msg: data.error || res.statusText }), 3500);
       return;
     }
     translateConfig = data;
     state.llm = data.llm_available;
     closeSettingsModal();
-    toast(t("saveOk"));
+    toast(tr("saveOk"));
     if (state.segs.length) updateBanner();
   } catch (e) {
-    toast(t("saveFailed", { msg: e.message }), 3500);
+    toast(tr("saveFailed", { msg: e.message }), 3500);
   }
 }
 
@@ -529,13 +626,22 @@ async function resetSettings() {
     if (!res.ok || data.error) throw new Error(data.error || res.statusText);
     translateConfig = data;
     fillSettingsForm(data);
-    toast(t("resetOk"));
+    toast(tr("resetOk"));
   } catch (e) {
-    toast(t("resetFailed", { msg: e.message }), 3500);
+    toast(tr("resetFailed", { msg: e.message }), 3500);
   }
 }
 
-$("settingsBtn").onclick = openSettings;
+$("settingsBtn").onclick = () => { closeDownloadMenu(); openSettings(); };
+$("downloadBtn").onclick = (e) => { e.stopPropagation(); toggleDownloadMenu(); };
+$("downloadMenu").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-dl]");
+  if (!btn || btn.disabled) return;
+  downloadSubtitle(btn.dataset.dl);
+});
+document.addEventListener("click", (e) => {
+  if (!$("downloadMenu").hidden && !e.target.closest("#downloadWrap")) closeDownloadMenu();
+});
 $("settingsClose").onclick = closeSettingsModal;
 $("settingsCancel").onclick = closeSettingsModal;
 $("settingsSave").onclick = saveSettings;
@@ -548,9 +654,9 @@ $("settingsModal").addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.code === "Escape" && !$("settingsModal").hidden) {
-    closeSettingsModal();
-    return;
+  if (e.code === "Escape") {
+    if (!$("downloadMenu").hidden) { closeDownloadMenu(); return; }
+    if (!$("settingsModal").hidden) { closeSettingsModal(); return; }
   }
   if (!$("settingsModal").hidden) return;
   if (e.code === "Space" && state.segs.length && e.target.tagName !== "INPUT") {
@@ -566,12 +672,14 @@ $("langBtn").onclick = () => {
   if (state.segs.length) {
     state.segs.forEach((s, i) => updateSegEl(i));
     updateBanner();
+    updateDownloadBtn();
   }
 };
 
 // ---------- 初始化 ----------
 render();
 syncLayout();
+updateDownloadBtn();
 window.addEventListener("resize", syncLayout);
 if (typeof ResizeObserver !== "undefined") {
   const mainEl = document.querySelector(".main");

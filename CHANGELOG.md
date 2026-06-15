@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-15
+
+### Added
+
+- Download dropdown menu: export Chinese, English, or bilingual subtitles as funasr-style `.txt` (`[timestamp] text`).
+
+### Fixed
+
+- UI clicks not working: resolved `t` variable name collision between playback time and i18n helper (renamed to `tr`).
+- File load error: fixed accidental `createElement` / `closest` typos introduced during i18n refactor.
+
 ## [0.0.2] - 2026-06-13
 
 ### Changed
@@ -26,6 +37,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - English documentation (default) with Chinese variants; UI i18n (EN/中).
 - Open-source docs, `LICENSE` (MIT), `.env.example`, API reference.
 
-[Unreleased]: https://github.com/archoor/subtitle-player/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/archoor/subtitle-player/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/archoor/subtitle-player/releases/tag/v0.0.3
 [0.0.2]: https://github.com/archoor/subtitle-player/releases/tag/v0.0.2
 [0.0.1]: https://github.com/archoor/subtitle-player/releases/tag/v0.0.1
